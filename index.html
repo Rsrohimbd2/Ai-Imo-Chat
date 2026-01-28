@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ai Imo Chat - RSROHIM</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <style>
+        :root { 
+            --imo-blue: #0088cc; 
+            --bg-gray: #f4f7f9;
+            --text-dark: #333;
+            --glass: rgba(255, 255, 255, 0.9);
+        }
+        
+        body { 
+            font-family: 'Hind Siliguri', sans-serif; 
+            margin: 0; background-color: var(--bg-gray);
+            background-image: url('images/background.jpg');
+            background-size: cover; background-attachment: fixed;
+        }
+
+        /* Login Screen Style */
+        #auth-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; }
+        .auth-container { width: 100%; max-width: 350px; text-align: center; }
+        .auth-input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; outline: none; }
+        .otp-display { font-size: 24px; font-weight: bold; color: var(--imo-blue); background: #e0f2fe; padding: 15px; border-radius: 10px; margin: 10px 0; display: none; }
+
+        header { 
+            background: var(--imo-blue); color: white; 
+            padding: 10px 15px; display: flex; align-items: center;
+            position: sticky; top: 0; z-index: 100; gap: 10px;
+        }
+
+        .header-avatar {
+            width: 40px; height: 40px; border-radius: 50%;
+            background: #fff; cursor: pointer;
+            overflow: hidden; border: 1.5px solid white; flex-shrink: 0;
+        }
+        .header-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+        .header-features { display: flex; flex: 1; justify-content: space-around; align-items: center; }
+        .h-item { text-align: center; font-size: 11px; cursor: pointer; color: rgba(255,255,255,0.7); position: relative; }
+        .h-active { color: white; font-weight: bold; }
+        .badge { position: absolute; top: -8px; right: -8px; background: red; color: white; border-radius: 50%; padding: 2px 5px; font-size: 9px; }
+
+        .container { max-width: 500px; margin: auto; padding-bottom: 20px; }
+
+        .settings-container { background: #FFFFFF; min-height: 100vh; }
+        .settings-header { font-size: 22px; padding: 16px; font-weight: bold; color: #000; border-bottom: 1px solid #eee; }
+        .setting-item { 
+            padding: 14px 16px; display: flex; align-items: center; 
+            border-bottom: 1px solid #f9f9f9; cursor: pointer; transition: 0.2s;
+        }
+        .setting-item:active { background: #f0f0f0; }
+        .setting-title { font-size: 18px; color: #333; flex: 1; }
+        .setting-arrow { color: #ccc; font-size: 18px; }
+
+        .contact-options { display: flex; justify-content: space-around; padding: 20px 10px; background: white; border-bottom: 1px solid #eee; margin-bottom: 10px; }
+        .opt-item { text-align: center; cursor: pointer; }
+        .opt-icon { width: 50px; height: 50px; border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 24px; color: white; margin: 0 auto 5px; }
+        .opt-text { font-size: 12px; color: #555; }
+
+        #new-contact-screen, #new-group-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 600; display: none; flex-direction: column; overflow-y: auto; }
+        .country-select { display: flex; align-items: center; gap: 10px; padding: 15px; background: #f8f9fa; border-radius: 10px; margin: 15px; border: 1px solid #ddd; }
+        
+        .chat-item { display: flex; align-items: center; padding: 12px 15px; background: white; border-bottom: 1px solid #eee; cursor: pointer; }
+        .user-avatar { width: 50px; height: 50px; border-radius: 50%; background: #ddd; margin-right: 15px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+        .user-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        
+        .list-call-btn { color: var(--imo-blue); font-size: 20px; padding: 10px; cursor: pointer; }
+
+        #chat-screen, #profile-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 500; display: none; flex-direction: column; overflow-y: auto; }
+        #chat-window { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 15px; background: #ebe7e1; }
+        
+        .msg-row { display: flex; align-items: flex-end; gap: 8px; width: 100%; margin-bottom: 5px; }
+        .msg-avatar { width: 32px; height: 32px; border-radius: 50%; background: #ccc; overflow: hidden; flex-shrink: 0; }
+        .msg-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+        .msg { max-width: 70%; padding: 8px 12px; border-radius: 12px; font-size: 15px; cursor: pointer; }
+        .sent-row { flex-direction: row-reverse; }
+        .sent { background: #dcf8c6; border-bottom-right-radius: 2px; }
+        .received { background: white; border-bottom-left-radius: 2px; }
+
+        .page { display: none; }
+        .active-page { display: block; }
+        .btn { background: var(--imo-blue); color: white; border: none; padding: 10px; border-radius: 15px; cursor: pointer; font-weight: bold; }
+        
+        .recording { background: red !important; animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+        .group-upload-circle { width: 80px; height: 80px; border-radius: 50%; background: #eee; margin: 15px auto; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 2px dashed #ccc; overflow: hidden; position: relative; }
+        .group-upload-circle img { width: 100%; height: 100%; object-fit: cover; }
+
+        /* Profile Update Style */
+        .profile-input-group { padding: 15px; text-align: left; }
+        .profile-input-group label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px; }
+        .profile-input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 15px; box-sizing: border-box; }
+    </style>
+</head>
+<body>
+
+<div id="auth-screen">
+    <div class="auth-container">
+        <h2 style="color: var(--imo-blue);">স্বাগতম RSROHIM অ্যাপে</h2>
+        <p>রেজিস্ট্রেশন বা লগইন করুন</p>
+        
+        <div id="auth-form">
+            <input type="text" id="reg-name" class="auth-input" placeholder="আপনার নাম">
+            <input type="email" id="reg-email" class="auth-input" placeholder="আপনার ইমেইল">
+            <input type="number" id="reg-phone" class="auth-input" placeholder="ফোন নাম্বার">
+            <button class="btn" style="width: 100%;" onclick="sendOTP()">OTP পাঠান</button>
+        </div>
+
+        <div id="otp-section" style="display: none;">
+            <div id="otp-box" class="otp-display">আপনার কোড: <span id="generated-otp"></span></div>
+            <input type="number" id="entered-otp" class="auth-input" placeholder="৪ সংখ্যার কোডটি দিন">
+            <button class="btn" style="width: 100%;" onclick="verifyOTP()">ভেরিফাই ও প্রবেশ করুন</button>
+        </div>
+    </div>
+</div>
+
+<div id="full-body" style="display: none;">
+    <header id="app-header">
+        <div class="header-avatar" onclick="openProfile()">
+            <img id="head-img" src="" alt="">
+        </div>
+        <div class="header-features">
+            <div class="h-item h-active" id="h-chat" onclick="showNav('chat')"><span id="main-chat-icon">💬</span><br>মেসেজ</div>
+            <div class="h-item" id="h-call" onclick="showNav('call')"><span id="main-call-icon">📞</span><br>কলস <span class="badge">০</span></div>
+            <div class="h-item" id="h-group" onclick="showNav('group')"><span id="main-group-icon">👥</span><br>কন্টাক্টস</div>
+        </div>
+    </header>
+
+    <div id="chat-page" class="page active-page container">
+        <div id="chat-list"></div>
+    </div>
+
+    <div id="call-page" class="page container">
+        <div style="padding: 20px; text-align: center;">
+            <h3>কল হিস্ট্রি</h3>
+            <div id="call-list">সাম্প্রতিক কোনো কল নেই।</div>
+        </div>
+    </div>
+
+    <div id="group-page" class="page container">
+        <div class="contact-options">
+            <div class="opt-item" onclick="openNewGroup()">
+                <div class="opt-icon" style="background: #4caf50;"><span id="opt-group-icon">👥</span></div>
+                <div class="opt-text">New Group</div>
+            </div>
+            <div class="opt-item" onclick="openNewContact()">
+                <div class="opt-icon" id="opt-contact-bg" style="background: var(--imo-blue);"><span id="opt-contact-icon">👤</span></div>
+                <div class="opt-text">New Contact</div>
+            </div>
+            <div class="opt-item" onclick="showNav('call')">
+                <div class="opt-icon" style="background: #ff9800;"><span id="opt-call-icon">📞</span></div>
+                <div class="opt-text">Call History</div>
+            </div>
+        </div>
+        <div id="contact-list-container">
+            <div style="padding: 10px 15px; font-weight: bold; color: #888;">MY CONTACTS</div>
+            <div id="global-chat-list"></div>
+        </div>
+    </div>
+</div>
+
+<div id="new-group-screen">
+    <header id="group-screen-header" style="background: white; color: black; border-bottom: 1px solid #ddd; display: flex; align-items: center; padding: 10px;">
+        <span onclick="closeNewGroup()" style="cursor: pointer; font-size: 24px; color: var(--imo-blue);">←</span>
+        <b style="margin-left: 15px;">Create Group</b>
+    </header>
+    <div class="container" style="padding: 15px; text-align: center;">
+        <div class="group-upload-circle" onclick="document.getElementById('group-photo-in').click()">
+            <img id="group-prev-img" src="" style="display:none;">
+            <span id="group-up-txt" style="font-size: 30px;">📷</span>
+        </div>
+        <input type="file" id="group-photo-in" onchange="previewGroupPhoto(event)" style="display: none;">
+        <input type="text" id="group-name" style="width: calc(100% - 30px); margin: 10px 15px; padding: 12px; border-radius: 10px; border: 1px solid #ddd;" placeholder="Group Name">
+        <div style="padding: 10px 15px; font-weight: bold; color: #888; text-align: left;">SELECT MEMBERS</div>
+        <div id="group-member-list"></div>
+        <button class="btn" id="group-create-btn" style="margin: 20px 15px; width: calc(100% - 30px);" onclick="createGroup()">Create Group</button>
+    </div>
+</div>
+
+<div id="new-contact-screen">
+    <header style="background: white; color: black; border-bottom: 1px solid #ddd; display: flex; align-items: center; padding: 10px;">
+        <span onclick="closeNewContact()" style="cursor: pointer; font-size: 24px; color: var(--imo-blue);">←</span>
+        <b style="margin-left: 15px;">Add Contact</b>
+    </header>
+    <div class="container" style="padding: 15px;">
+        <div class="country-select">
+            <span id="flag-display" style="font-size: 24px;">🇧🇩</span>
+            <select id="country-code" onchange="updateCountryFlag(this)" style="border:none; flex:1; outline:none; font-size: 16px;">
+                <option value="+880" data-flag="🇧🇩">Bangladesh (+880)</option>
+                <option value="+966" data-flag="🇸🇦">Saudi Arabia (+966)</option>
+            </select>
+        </div>
+        <input type="number" id="contact-phone" style="width: calc(100% - 30px); margin: 0 15px; padding: 12px; border-radius: 10px; border: 1px solid #ddd;" placeholder="Phone Number">
+        <button class="btn" id="add-contact-btn" style="margin: 20px 15px; width: calc(100% - 30px);" onclick="checkAndAddContact()">Add Contact</button>
+    </div>
+</div>
+
+<div id="profile-screen">
+    <div class="settings-container">
+        <div id="prof-header-bg" style="background: var(--imo-blue); color: white; padding: 10px; display: flex; align-items: center;">
+            <span onclick="closeProfile()" style="cursor: pointer; font-size: 24px;">←</span>
+            <b style="margin-left: 15px;">Me</b>
+        </div>
+        
+        <div style="padding: 20px; text-align: center; border-bottom: 8px solid #f4f7f9;">
+            <div id="prof-img-large" class="user-avatar" style="width: 80px; height: 80px; margin: auto; border: 2px solid var(--imo-blue);">👤</div>
+            <h2 id="prof-name-text" style="margin: 10px 0 5px;">MD ABDUR ROHIM</h2>
+            <div style="display: flex; gap: 10px; justify-content: center; margin-top: 10px;">
+                <button class="btn id="change-photo-btn" style="font-size: 11px; padding: 6px 12px;" onclick="document.getElementById('file-in').click()">ছবি পরিবর্তন 📷</button>
+                <input type="file" id="file-in" onchange="uploadPhoto(event)" style="display: none;">
+                <button class="btn" id="setting-emoji-btn" style="background: #94a3b8; font-size: 11px; padding: 6px 12px;" onclick="alert('ইমোজি ফিচার শীঘ্রই আসছে!')">ইমোজি 🔄</button>
+            </div>
+        </div>
+
+        <div class="profile-input-group">
+            <label>নাম পরিবর্তন করুন:</label>
+            <input type="text" id="up-name" class="profile-input" placeholder="নতুন নাম দিন">
+            <label>ইমেইল পরিবর্তন করুন:</label>
+            <input type="email" id="up-email" class="profile-input" placeholder="নতুন ইমেইল দিন">
+            <button class="btn" style="width: 100%; margin-bottom: 20px;" onclick="updateProfileData()">তথ্য সেভ করুন ✅</button>
+        </div>
+
+        <div id="settings-list-container">
+            <div class="setting-item" onclick="logout()" style="border-top: 2px solid #f4f7f9;"><div class="setting-title" style="color: red;">Logout</div><div class="setting-arrow">›</div></div>
+        </div>
+    </div>
+</div>
+
+<div id="chat-screen">
+    <header style="background: white; color: black; border-bottom: 1px solid #ddd; display: flex; align-items: center; padding: 10px;">
+        <div id="chat-partner-avatar-container" onclick="closeChat()" style="width: 35px; height: 35px; border-radius: 50%; overflow: hidden; background: #ddd; cursor: pointer;">
+            <img id="chat-partner-img" src="" style="width: 100%; height: 100%; object-fit: cover;">
+        </div>
+        <b id="chat-partner-name" style="margin-left: 10px;">নাম</b>
+        <div style="margin-left: auto; display: flex; gap: 20px; font-size: 20px; color: var(--imo-blue);">
+            <span id="call-icon-btn" onclick="startCall('audio')">📞</span>
+            <span id="video-icon-btn" onclick="startCall('video')">📹</span>
+        </div>
+    </header>
+    <div id="chat-window"></div>
+    <div style="padding:10px; background:#f0f0f0; display:flex; gap:8px; align-items: center;">
+        <button class="btn" style="border-radius: 50%; width: 40px; height: 40px; padding: 0; background: #94a3b8;" onclick="document.getElementById('file-msg-in').click()">📁</button>
+        <input type="file" id="file-msg-in" style="display:none" onchange="sendFileMsg(event)">
+        <input type="text" id="msg-in" style="flex:1; padding:10px; border-radius:20px; border:1px solid #ddd;" placeholder="বার্তা লিখুন...">
+        <button id="voice-btn" class="btn" style="border-radius: 50%; width: 40px; height: 40px; padding: 0; background: #555;">🎤</button>
+        <button id="send-btn" class="btn" style="border-radius: 50%; width: 40px; height: 40px; padding: 0;" onclick="sendMsg()">🚀</button>
+    </div>
+</div>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyA8cKvHhYCYPa_ue1Svg51dA9JJGHW1W1w",
+        databaseURL: "https://md-abdur-90128-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "md-abdur-90128",
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let myUser = JSON.parse(localStorage.getItem('myChatUser')) || null;
+    let activeChatPartner = null;
+    let selectedGroupMembers = [];
+    let groupPhotoBase64 = "";
+    let currentOTP = "";
+    
+    let mediaRecorder;
+    let audioChunks = [];
+    let isRecording = false;
+
+    window.onload = () => { 
+        if(myUser) {
+            document.getElementById('auth-screen').style.display = 'none';
+            document.getElementById('full-body').style.display = 'block';
+            updateUI(); 
+            loadChatList(); 
+        }
+        setupVoice(); 
+        window.history.pushState({page: "home"}, "home");
+        
+        // Admin Design Listener
+        db.ref('admin_settings/design').on('value', snap => {
+            const d = snap.val();
+            if(d) {
+                if(d.appName) { document.title = d.appName; }
+                if(d.themeColor) {
+                    document.documentElement.style.setProperty('--imo-blue', d.themeColor);
+                    document.getElementById('app-header').style.background = d.themeColor;
+                    document.getElementById('prof-header-bg').style.background = d.themeColor;
+                }
+            }
+        });
+    };
+
+    window.onpopstate = function(event) {
+        if (document.getElementById('chat-screen').style.display === 'flex') {
+            closeChat();
+            window.history.pushState({page: "home"}, "home");
+        } else if (document.getElementById('profile-screen').style.display === 'block') {
+            closeProfile();
+            window.history.pushState({page: "home"}, "home");
+        } else if (document.getElementById('new-group-screen').style.display === 'flex') {
+            closeNewGroup();
+            window.history.pushState({page: "home"}, "home");
+        } else if (document.getElementById('new-contact-screen').style.display === 'flex') {
+            closeNewContact();
+            window.history.pushState({page: "home"}, "home");
+        }
+    };
+
+    function sendOTP() {
+        const name = document.getElementById('reg-name').value;
+        const email = document.getElementById('reg-email').value;
+        const phone = document.getElementById('reg-phone').value;
+        if(!name || !email || !phone) return alert("সবগুলো তথ্য পূরণ করুন");
+        currentOTP = Math.floor(1000 + Math.random() * 9000);
+        document.getElementById('generated-otp').innerText = currentOTP;
+        document.getElementById('otp-section').style.display = 'block';
+        document.getElementById('otp-box').style.display = 'block';
+        setTimeout(() => { document.getElementById('otp-box').style.display = 'none'; }, 5000);
+    }
+
+    function verifyOTP() {
+        const entered = document.getElementById('entered-otp').value;
+        if(entered == currentOTP) {
+            const name = document.getElementById('reg-name').value;
+            const email = document.getElementById('reg-email').value;
+            const phone = document.getElementById('reg-phone').value;
+            myUser = { name, email, phone, photo: "", emoji: "👤" };
+            db.ref('users/' + phone).set(myUser);
+            localStorage.setItem('myChatUser', JSON.stringify(myUser));
+            alert("রেজিস্ট্রেশন সফল!");
+            location.reload();
+        } else { alert("ভুল কোড!"); }
+    }
+
+    function logout() { localStorage.clear(); location.reload(); }
+
+    function updateUI() {
+        if(!myUser) return;
+        document.getElementById('head-img').src = myUser.photo || "";
+        document.getElementById('prof-img-large').innerHTML = myUser.photo ? `<img src="${myUser.photo}" style="width:100%; height:100%; object-fit:cover;">` : `<span style="font-size:40px">${myUser.emoji || "👤"}</span>`;
+        document.getElementById('prof-name-text').innerText = myUser.name;
+        document.getElementById('up-name').value = myUser.name;
+        document.getElementById('up-email').value = myUser.email || "";
+    }
+
+    function updateProfileData() {
+        const newName = document.getElementById('up-name').value;
+        const newEmail = document.getElementById('up-email').value;
+        if(!newName) return alert("নাম খালি রাখা যাবে না");
+        myUser.name = newName;
+        myUser.email = newEmail;
+        db.ref('users/' + myUser.phone).update({ name: newName, email: newEmail });
+        localStorage.setItem('myChatUser', JSON.stringify(myUser));
+        updateUI();
+        alert("প্রোফাইল আপডেট হয়েছে! ✅");
+    }
+
+    function showNav(page) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
+        document.getElementById(page + '-page').classList.add('active-page');
+        document.querySelectorAll('.h-item').forEach(n => n.classList.remove('h-active'));
+        document.getElementById('h-' + page).classList.add('h-active');
+        if(page === 'chat' || page === 'group') loadChatList();
+    }
+
+    function openProfile() { 
+        document.getElementById('profile-screen').style.display = 'block'; 
+        window.history.pushState({page: "profile"}, "profile");
+    }
+    function closeProfile() { document.getElementById('profile-screen').style.display = 'none'; }
+    
+    function closeChat() { 
+        if(activeChatPartner) {
+            const path = activeChatPartner.includes('group_') ? 'group_messages/' + activeChatPartner : 'messages/' + (myUser.phone < activeChatPartner ? myUser.phone+"_"+activeChatPartner : activeChatPartner+"_"+myUser.phone);
+            db.ref(path).off();
+        }
+        document.getElementById('chat-screen').style.display = 'none'; 
+        activeChatPartner = null; 
+    }
+
+    function openNewGroup() {
+        document.getElementById('new-group-screen').style.display = 'flex';
+        loadGroupMemberList();
+    }
+    function closeNewGroup() { document.getElementById('new-group-screen').style.display = 'none'; }
+
+    function previewGroupPhoto(event) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            groupPhotoBase64 = e.target.result;
+            document.getElementById('group-prev-img').src = groupPhotoBase64;
+            document.getElementById('group-prev-img').style.display = "block";
+            document.getElementById('group-up-txt').style.display = "none";
+        };
+        reader.readAsDataURL(event.target.files[0]);
+    }
+
+    function openNewContact() { document.getElementById('new-contact-screen').style.display = 'flex'; }
+    function closeNewContact() { document.getElementById('new-contact-screen').style.display = 'none'; }
+
+    function checkAndAddContact() {
+        const phone = document.getElementById('contact-phone').value;
+        if (!phone) return alert("নাম্বার দিন");
+        db.ref('users/' + phone).once('value', snap => {
+            const u = snap.val();
+            if (u) {
+                db.ref('partners/' + myUser.phone + '/' + phone).set(true);
+                alert("কন্টাক্ট অ্যাড হয়েছে!");
+                closeNewContact(); loadChatList();
+            } else { alert("ইউজার পাওয়া যায়নি।"); }
+        });
+    }
+
+    function loadGroupMemberList() {
+        db.ref('partners/' + myUser.phone).once('value', snap => {
+            const list = document.getElementById('group-member-list');
+            list.innerHTML = "";
+            snap.forEach(child => {
+                db.ref('users/' + child.key).once('value', uSnap => {
+                    const u = uSnap.val(); if(!u) return;
+                    list.innerHTML += `<div class="chat-item" onclick="toggleMemberSelection('${u.phone}')" id="member-${u.phone}">
+                        <div class="user-avatar">${u.photo ? `<img src="${u.photo}">` : `<span>👤</span>`}</div>
+                        <div style="flex:1"><b>${u.name}</b></div>
+                        <div class="select-box" style="width:20px; height:20px; border:2px solid #ddd; border-radius:50%;"></div>
+                    </div>`;
+                });
+            });
+        });
+    }
+
+    function toggleMemberSelection(phone) {
+        const idx = selectedGroupMembers.indexOf(phone);
+        const el = document.getElementById('member-' + phone).querySelector('.select-box');
+        if (idx > -1) {
+            selectedGroupMembers.splice(idx, 1); el.style.background = "none";
+        } else {
+            selectedGroupMembers.push(phone); el.style.background = "var(--imo-blue)";
+        }
+    }
+
+    function createGroup() {
+        const name = document.getElementById('group-name').value;
+        if (!name || selectedGroupMembers.length === 0) return alert("তথ্য পূরণ করুন");
+        const groupId = "group_" + Date.now();
+        const members = [myUser.phone, ...selectedGroupMembers];
+        db.ref('groups/' + groupId).set({ id: groupId, name: name, members: members, type: 'group', photo: groupPhotoBase64 });
+        members.forEach(p => db.ref('partners/' + p + '/' + groupId).set(true));
+        alert("গ্রুপ তৈরি হয়েছে!"); closeNewGroup(); loadChatList();
+    }
+
+    function openChat(id, name, photo) {
+        activeChatPartner = id;
+        document.getElementById('chat-partner-name').innerText = name;
+        document.getElementById('chat-partner-img').src = photo || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+        const win = document.getElementById('chat-window');
+        win.innerHTML = ""; 
+        document.getElementById('chat-screen').style.display = 'flex';
+        window.history.pushState({page: "chat"}, "chat");
+        const path = id.includes('group_') ? 'group_messages/' + id : 'messages/' + (myUser.phone < id ? myUser.phone+"_"+id : id+"_"+myUser.phone);
+        db.ref(path).off(); 
+        db.ref(path).on('child_added', snap => { 
+            const m = snap.val(); const isMe = m.sender === myUser.phone;
+            const msgId = snap.key;
+            db.ref('users/' + m.sender).once('value', uSnap => {
+                const u = uSnap.val();
+                const senderPhoto = (u && u.photo) ? u.photo : 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+                let content = "";
+                if(m.type === 'voice') content = `<audio controls src="${m.voice}" style="width: 180px; height: 40px;"></audio>`;
+                else if(m.type === 'file') content = `<img src="${m.file}" style="max-width:200px; border-radius:10px;">`;
+                else content = m.text;
+                const msgDiv = document.createElement('div');
+                msgDiv.className = `msg-row ${isMe ? 'sent-row' : ''}`;
+                msgDiv.id = "msg-"+msgId;
+                msgDiv.innerHTML = `<div class="msg-avatar"><img src="${senderPhoto}"></div><div class="msg ${isMe ? 'sent' : 'received'}" onclick="handleMsgClick('${msgId}', ${isMe})">${content || ''}</div>`;
+                win.appendChild(msgDiv);
+                win.scrollTop = win.scrollHeight;
+            });
+        });
+        db.ref(path).on('child_removed', snap => {
+            const el = document.getElementById("msg-"+snap.key);
+            if(el) el.remove();
+        });
+    }
+
+    function handleMsgClick(msgId, isMe) {
+        if(!isMe) return;
+        if(confirm("আপনি কি এই মেসেজটি ডিলিট করতে চান?")){
+            const path = activeChatPartner.includes('group_') ? 'group_messages/' + activeChatPartner : 'messages/' + (myUser.phone < activeChatPartner ? myUser.phone+"_"+activeChatPartner : activeChatPartner+"_"+myUser.phone);
+            db.ref(path + '/' + msgId).remove();
+        }
+    }
+
+    function loadChatList() {
+        if(!myUser) return;
+        db.ref('partners/' + myUser.phone).on('value', snap => {
+            const list = document.getElementById('chat-list');
+            list.innerHTML = "";
+            snap.forEach(child => {
+                const id = child.key;
+                if (id.includes('group_')) {
+                    db.ref('groups/' + id).once('value', gSnap => {
+                        const g = gSnap.val(); if(!g) return;
+                        list.innerHTML += `<div class="chat-item" onclick="openChat('${g.id}', '${g.name}', '${g.photo||''}')">
+                            <div class="user-avatar">${g.photo ? `<img src="${g.photo}">` : '👥'}</div>
+                            <div style="flex:1"><b>${g.name}</b><p>Group Chat</p></div>
+                        </div>`;
+                    });
+                } else {
+                    db.ref('users/' + id).once('value', uSnap => {
+                        const u = uSnap.val(); if(!u) return;
+                        list.innerHTML += `<div class="chat-item" onclick="openChat('${u.phone}', '${u.name}', '${u.photo||''}')">
+                            <div class="user-avatar">${u.photo ? `<img src="${u.photo}">` : `<span>👤</span>`}</div>
+                            <div style="flex:1"><b>${u.name}</b><p>${u.phone}</p></div>
+                        </div>`;
+                    });
+                }
+            });
+        });
+    }
+
+    function sendMsg() {
+        const text = document.getElementById('msg-in').value; if(!text || !activeChatPartner) return;
+        const path = activeChatPartner.includes('group_') ? 'group_messages/' + activeChatPartner : 'messages/' + (myUser.phone < activeChatPartner ? myUser.phone+"_"+activeChatPartner : activeChatPartner+"_"+myUser.phone);
+        db.ref(path).push({ sender: myUser.phone, text: text, type: 'text' });
+        document.getElementById('msg-in').value = "";
+    }
+
+    function sendFileMsg(event) {
+        const file = event.target.files[0];
+        if(!file || !activeChatPartner) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const path = activeChatPartner.includes('group_') ? 'group_messages/' + activeChatPartner : 'messages/' + (myUser.phone < activeChatPartner ? myUser.phone+"_"+activeChatPartner : activeChatPartner+"_"+myUser.phone);
+            db.ref(path).push({ sender: myUser.phone, file: e.target.result, type: 'file' });
+        };
+        reader.readAsDataURL(file);
+    }
+
+    // --- MIC FIX ---
+    async function setupVoice() {
+        const vBtn = document.getElementById('voice-btn');
+        let currentStream;
+
+        vBtn.onclick = async () => {
+            if (!isRecording) {
+                try {
+                    currentStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/ogg';
+                    mediaRecorder = new MediaRecorder(currentStream, { mimeType });
+                    audioChunks = [];
+
+                    mediaRecorder.ondataavailable = event => { if (event.data.size > 0) audioChunks.push(event.data); };
+                    
+                    mediaRecorder.onstop = () => {
+                        const audioBlob = new Blob(audioChunks, { type: mimeType });
+                        const reader = new FileReader();
+                        reader.readAsDataURL(audioBlob);
+                        reader.onloadend = () => { sendVoice(reader.result); };
+                        currentStream.getTracks().forEach(track => track.stop());
+                    };
+
+                    mediaRecorder.start();
+                    isRecording = true;
+                    vBtn.classList.add('recording');
+                    vBtn.style.background = "red";
+                } catch (err) { alert("Mic access denied or error!"); }
+            } else {
+                if (mediaRecorder && mediaRecorder.state !== "inactive") {
+                    mediaRecorder.stop();
+                    isRecording = false;
+                    vBtn.classList.remove('recording');
+                    vBtn.style.background = "#555";
+                }
+            }
+        };
+    }
+
+    function sendVoice(data) {
+        if(!activeChatPartner) return;
+        const path = activeChatPartner.includes('group_') ? 'group_messages/' + activeChatPartner : 'messages/' + (myUser.phone < activeChatPartner ? myUser.phone+"_"+activeChatPartner : activeChatPartner+"_"+myUser.phone);
+        db.ref(path).push({ sender: myUser.phone, voice: data, type: 'voice' });
+    }
+
+    function uploadPhoto(event) {
+        const reader = new FileReader(); reader.onload = (e) => {
+            myUser.photo = e.target.result;
+            db.ref('users/' + myUser.phone).update({photo: e.target.result});
+            localStorage.setItem('myChatUser', JSON.stringify(myUser)); updateUI();
+        }; reader.readAsDataURL(event.target.files[0]);
+    }
+</script>
+</body>
+</html>
